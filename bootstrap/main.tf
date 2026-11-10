@@ -28,13 +28,13 @@ locals {
   repos = [
     "oficina-app", "oficina-lambda-auth", "oficina-infra-k8s", "oficina-infra-db",
     # Fase 4 — microsserviços
-    "oficina-billing-service", "oficina-execution-service",
+    "oficina-billing", "oficina-execution",
   ]
 
   # Repos de serviço: o CD só acha o cluster e lê a SSM (mesma policy da Fase 3).
   # O Terraform do `infra/` de cada serviço é aplicado localmente nesta fase
   # (corte 15 do plano da Fase 4), por isso eles NÃO entram em repos_terraform.
-  repos_servico = ["oficina-app", "oficina-billing-service", "oficina-execution-service"]
+  repos_servico = ["oficina-app", "oficina-billing", "oficina-execution"]
 
   # Repos que rodam Terraform e, portanto, precisam de `plan` em PR.
   repos_terraform = ["oficina-lambda-auth", "oficina-infra-k8s", "oficina-infra-db"]
