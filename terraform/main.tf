@@ -141,7 +141,20 @@ module "eks" {
           }
         }
       }
-
+    },
+    # Fase 4: o CD de cada microsserviço só implanta no próprio namespace.
+    {
+      for nome, svc in var.servicos : "cd_${nome}" => {
+        principal_arn = svc.cd_role
+        policy_associations = {
+          edit = {
+            policy_arn   = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy"
+            access_scope = { type = "namespace", namespaces = [svc.namespace] }
+          }
+        }
+      }
+    },
+    {
       # O `terraform plan` em PR deste repositório roda com uma role só de
       # leitura (ver bootstrap). O provider kubernetes precisa ler o namespace
       # no refresh, então ela entra aqui apenas com View.
@@ -166,5 +179,17 @@ resource "kubernetes_namespace" "app" {
   metadata {
     name   = local.ns
     labels = { ambiente = var.ambiente }
+  }
+}
+
+# Namespaces dos microsserviços da Fase 4. Ficam AQUI, e não no k8s/base de
+# cada serviço, porque Namespace é recurso de escopo de cluster e a role de CD
+# do serviço só tem Edit dentro do próprio namespace — o primeiro deploy
+# falharia tentando criá-lo.
+resource "kubernetes_namespace" "servicos" {
+  for_each = var.servicos
+  metadata {
+    name   = each.value.namespace
+    labels = { ambiente = var.ambiente, servico = each.key }
   }
 }

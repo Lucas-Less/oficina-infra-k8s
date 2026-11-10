@@ -40,15 +40,15 @@ variable "node_instance_type" {
 }
 
 variable "node_min" {
-  description = "Mínimo de nós"
+  description = "Mínimo de nós. 3 na Fase 4: OS + Billing + Execution + nri-bundle não cabem nos 11 pods/nó do t3.small (limite de ENI do VPC CNI)"
   type        = number
-  default     = 2
+  default     = 3
 }
 
 variable "node_max" {
-  description = "Teto do node group. Sem Cluster Autoscaler (corte 3) fica sempre em 2; o 3º slot só existe para o EKS conseguir substituir um nó numa atualização"
+  description = "Teto do node group. Sem Cluster Autoscaler (corte 3) fica sempre em node_min; o slot extra só existe para o EKS conseguir substituir um nó numa atualização"
   type        = number
-  default     = 3
+  default     = 4
 }
 
 # Mapa, e não lista: a chave era derivada do ARN com split("/", arn)[1], e o
@@ -74,6 +74,27 @@ variable "cd_role_arn" {
   description = "Role do CD da aplicação — acesso Edit restrito ao namespace, nunca ClusterAdmin"
   type        = string
   default     = "arn:aws:iam::706215605178:role/gha-oficina-app"
+}
+
+# Fase 4: cada microsserviço novo tem namespace próprio e uma role de CD (do
+# bootstrap) com Edit só nele. O OS Service continua no namespace da Fase 3
+# (local.ns), via cd_role_arn.
+variable "servicos" {
+  description = "Microsserviços da Fase 4: namespace e role de CD de cada um"
+  type = map(object({
+    namespace = string
+    cd_role   = string
+  }))
+  default = {
+    billing = {
+      namespace = "billing-prod"
+      cd_role   = "arn:aws:iam::706215605178:role/gha-oficina-billing"
+    }
+    execution = {
+      namespace = "execution-prod"
+      cd_role   = "arn:aws:iam::706215605178:role/gha-oficina-execution"
+    }
+  }
 }
 
 variable "plan_role_arn" {
