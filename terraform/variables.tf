@@ -51,36 +51,33 @@ variable "node_max" {
   default     = 4
 }
 
-# Mapa, e não lista: a chave era derivada do ARN com split("/", arn)[1], e o
-# ARN do usuário raiz não tem barra — quebraria justamente nele.
-variable "admin_principal_arns" {
-  description = "Principals IAM com acesso administrativo ao cluster, por apelido"
+# Principals por apelido → caminho do ARN dentro da conta. O ID da conta vem
+# de aws_caller_identity (main.tf): trocar de conta não muda código.
+# Mapa, e não lista: as chaves viram as chaves das access entries no state.
+variable "admin_principals" {
+  description = "Principals IAM com acesso administrativo ao cluster: apelido → caminho do ARN (user/..., role/...)"
   type        = map(string)
   default = {
-    # As chaves são as mesmas que a derivação antiga produzia, para o state
-    # não recriar entradas que já existem e funcionam.
-    admin-cli             = "arn:aws:iam::706215605178:user/admin-cli"
-    gha-oficina-infra-k8s = "arn:aws:iam::706215605178:role/gha-oficina-infra-k8s"
+    admin-cli             = "user/admin-cli"
+    gha-oficina-infra-k8s = "role/gha-oficina-infra-k8s"
 
-    # O root opera o console desta conta porque o admin-cli só tem chave de
-    # API, sem senha de console. Numa conta de trabalho isto não estaria aqui:
-    # o certo seria um usuário IAM com login próprio, e o root reservado para
-    # o que só ele faz. Registrado como dívida consciente.
-    root = "arn:aws:iam::706215605178:root"
+    # Login do console na conta da organização (Builder ID / acesso gerenciado
+    # da AWS). Na conta da Fase 3 era o root; nesta, o root não tem login.
+    console = "role/managed/AccountFullAccessRole"
   }
 }
 
-variable "cd_role_arn" {
+variable "cd_role" {
   description = "Role do CD da aplicação — acesso Edit restrito ao namespace, nunca ClusterAdmin"
   type        = string
-  default     = "arn:aws:iam::706215605178:role/gha-oficina-app"
+  default     = "gha-oficina-app"
 }
 
 # Fase 4: cada microsserviço novo tem namespace próprio e uma role de CD (do
 # bootstrap) com Edit só nele. O OS Service continua no namespace da Fase 3
-# (local.ns), via cd_role_arn.
+# (local.ns), via cd_role.
 variable "servicos" {
-  description = "Microsserviços da Fase 4: namespace e role de CD de cada um"
+  description = "Microsserviços da Fase 4: namespace e nome da role de CD de cada um"
   type = map(object({
     namespace = string
     cd_role   = string
@@ -88,17 +85,17 @@ variable "servicos" {
   default = {
     billing = {
       namespace = "billing-prod"
-      cd_role   = "arn:aws:iam::706215605178:role/gha-oficina-billing"
+      cd_role   = "gha-oficina-billing"
     }
     execution = {
       namespace = "execution-prod"
-      cd_role   = "arn:aws:iam::706215605178:role/gha-oficina-execution"
+      cd_role   = "gha-oficina-execution"
     }
   }
 }
 
-variable "plan_role_arn" {
+variable "plan_role" {
   description = "Role read-only usada pelo `terraform plan` em Pull Request deste repositório — só View no cluster"
   type        = string
-  default     = "arn:aws:iam::706215605178:role/gha-oficina-infra-k8s-plan"
+  default     = "gha-oficina-infra-k8s-plan"
 }
